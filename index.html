@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Mario</title>
+    <link rel="icon" href="2a358da09076583f525222993732efc1.png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: linear-gradient(145deg, #0a0f2c 0%, #0b1525 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-family: 'Courier New', 'VT323', monospace;
+            touch-action: manipulation;
+            padding: 20px;
+        }
+
+        .game-container {
+            background: #000;
+            padding: 12px 20px 20px 20px;
+            border-radius: 48px;
+            box-shadow: 0 25px 35px rgba(0,0,0,0.5), inset 0 1px 4px rgba(255,255,255,0.1);
+        }
+
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border-radius: 24px;
+            box-shadow: 0 0 0 4px #f3c674, 0 0 0 8px #d48f3b;
+            cursor: pointer;
+        }
+
+        .info-panel {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 16px;
+            padding: 8px 20px;
+            background: #2c1e12;
+            border-radius: 60px;
+            color: #f9e7b3;
+            text-shadow: 2px 2px 0 #6b3e1c;
+            font-weight: bold;
+            font-size: 1.3rem;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+
+        .health-bar {
+            background: #4a1a1a;
+            border-radius: 30px;
+            padding: 4px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.5), 0 2px 5px rgba(0,0,0,0.3);
+        }
+
+        .health-hearts {
+            display: flex;
+            gap: 5px;
+        }
+
+        .heart {
+            font-size: 1.5rem;
+            filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
+        }
+
+        .score-board, .coin-board, .level-badge, .weapon-indicator {
+            background: #221c0f;
+            padding: 5px 18px;
+            border-radius: 40px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: inset 0 1px 3px rgba(0,0,0,0.6), 0 2px 4px rgba(255,215,140,0.3);
+        }
+
+        .badge-value {
+            background: #f5bc70;
+            color: #3a280f;
+            padding: 2px 14px;
+            border-radius: 40px;
+            font-size: 1.4rem;
+            font-weight: bold;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 18px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            background: #f0bc6e;
+            border: none;
+            font-size: 1.3rem;
+            font-weight: bold;
+            padding: 8px 22px;
+            border-radius: 60px;
+            font-family: monospace;
+            box-shadow: 0 5px 0 #8b5a2b;
+            transition: 0.05s linear;
+            cursor: pointer;
+            color: #2d1f0c;
+        }
+
+        button:active {
+            transform: translateY(3px);
+            box-shadow: 0 2px 0 #8b5a2b;
+        }
+
+        .sound-toggle {
+            background: #5a3e24;
+            color: #ffecb3;
+        }
+
+        @media (max-width: 860px) {
+            .info-panel { font-size: 0.9rem; gap: 10px; justify-content: center; }
+            .heart { font-size: 1rem; }
+            .badge-value { font-size: 1rem; padding: 2px 8px; }
+            button { padding: 5px 12px; font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+<div>
+    <div class="game-container">
+        <canvas id="gameCanvas" width="1000" height="600"></canvas>
+        <div class="info-panel">
+            <div class="health-bar">
+                <span>❤️ ЗДОРОВЬЕ</span>
+                <div class="health-hearts" id="healthDisplay"></div>
+            </div>
+            <div class="score-board">⭐ СЧЁТ <span id="scoreValue" class="badge-value">0</span></div>
+            <div class="coin-board">🪙 МОНЕТЫ <span id="coinValue" class="badge-value">0</span></div>
+            <div class="level-badge">🌍 УРОВЕНЬ <span id="levelDisplay" class="badge-value">1</span></div>
+            <div class="weapon-indicator" id="weaponDisplay">🔫 РУЖЬЁ</div>
+        </div>
+        <div class="controls">
+            <button id="leftBtn">◀ ЛЕВО</button>
+            <button id="rightBtn">ПРАВО ▶</button>
+            <button id="jumpBtn">🍄 ПРЫЖОК</button>
+            <button id="shootBtn">🔫 СТРЕЛЯТЬ</button>
+            <button id="resetBtn">🌀 РЕСТАРТ</button>
+            <button id="soundToggle" class="sound-toggle">🔊 ЗВУК ВКЛ</button>
+        </div>
+        <div style="text-align: center; margin-top: 12px; font-size: 14px; color:#c9ae72;">
+            ⚡ СТРЕЛЯЙ [ПРОБЕЛ] | ❓ БЛОКИ ДАЮТ: ОРУЖИЕ / СЛОНА / АПТЕЧКУ | 🐉 НА 8 УРОВНЕ БОСС | 🎵 ЛЁГКИЕ ЗВУКИ
+        </div>
+    </div>
+</div>
+
+<script>
+(function(){
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // ========== ПРОСТАЯ ЗВУКОВАЯ СИСТЕМА (БЕЗ ЛАГОВ) ==========
+    let audioCtx = null;
+    let soundEnabled = true;
+    
+    function initAudio() {
+        if(audioCtx) return;
+        try {
+            audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        } catch(e) { soundEnabled = false; }
+    }
+    
+    function quickSound(freq, duration, vol = 0.2) {
+        if(!soundEnabled || !audioCtx) return;
+        try {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.frequency.value = freq;
+            osc.type = 'sine';
+            gain.gain.value = vol;
+            osc.start();
+            gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+            osc.stop(audioCtx.currentTime + duration);
+        } catch(e) {}
+    }
+    
+    function playJump() { quickSound(523, 0.15, 0.25); setTimeout(() => quickSound(659, 0.1, 0.2), 40); }
+    function playCoin() { quickSound(1046, 0.08, 0.2); setTimeout(() => quickSound(1318, 0.06, 0.18), 50); }
+    function playStomp() { quickSound(220, 0.08, 0.25); setTimeout(() => quickSound(164, 0.1, 0.2), 50); }
+    function playHurt() { quickSound(440, 0.12, 0.3); setTimeout(() => quickSound(349, 0.15, 0.25), 80); }
+    function playExtra() { quickSound(523, 0.1, 0.25); setTimeout(() => quickSound(659, 0.1, 0.25), 100); setTimeout(() => quickSound(783, 0.12, 0.25), 200); }
+    function playComplete() { quickSound(659, 0.12, 0.3); setTimeout(() => quickSound(783, 0.12, 0.3), 120); setTimeout(() => quickSound(987, 0.15, 0.3), 240); }
+    function playGameOver() { quickSound(440, 0.25, 0.35); setTimeout(() => quickSound(349, 0.3, 0.3), 200); }
+    function playShoot() { quickSound(880, 0.05, 0.15); }
+    function playPower() { quickSound(523, 0.08, 0.3); setTimeout(() => quickSound(659, 0.08, 0.3), 80); setTimeout(() => quickSound(783, 0.1, 0.3), 160); }
+    function playMedkit() { quickSound(523, 0.12, 0.25); setTimeout(() => quickSound(587, 0.12, 0.25), 100); }
+    function playBossHit() { quickSound(300, 0.06, 0.3); setTimeout(() => quickSound(250, 0.08, 0.25), 60); }
+    
+    function enableAudio() {
+        if(audioCtx && audioCtx.state === 'suspended') {
+            audioCtx.resume();
+        } else if(!audioCtx) {
+            initAudio();
+            if(audioCtx) audioCtx.resume();
+        }
+    }
+    
+    function toggleSound() {
+        soundEnabled = !soundEnabled;
+        const btn = document.getElementById('soundToggle');
+        btn.innerHTML = soundEnabled ? '🔊 ЗВУК ВКЛ' : '🔇 ЗВУК ВЫКЛ';
+        btn.style.background = soundEnabled ? '#5a3e24' : '#3a2a1a';
+        if(soundEnabled && audioCtx && audioCtx.state === 'suspended') enableAudio();
+    }
+    
+    // ========== ИГРОВЫЕ ПАРАМЕТРЫ ==========
+    let currentLevel = 1;
+    const maxLevel = 10;
+    let score = 0;
+    let coins = 0;
+    let marioHealth = 10;
+    const maxHealth = 10;
+    let gameOver = false;
+    let levelCompleted = false;
+    let bossDefeated = false;
+    
+    let weapon = 1;
+    let bullets = [];
+    
+    let cameraX = 0;
+    let WORLD_WIDTH = 3000;
+    const GROUND_Y = 520;
+    
+    let mario = {
+        x: 120, y: GROUND_Y - 48, vx: 0, vy: 0,
+        width: 32, height: 48, onGround: true, facingRight: true,
+        invincibleTimer: 0
+    };
+    
+    let platforms = [];
+    let enemies = [];
+    let coinsList = [];
+    let questionBlocks = [];
+    let medkits = [];
+    let boss = null;
+    
+    // ========== UI ==========
+    function updateUI() {
+        let heartsHtml = '';
+        for(let i=0; i<marioHealth; i++) heartsHtml += '<span class="heart">❤️</span>';
+        for(let i=marioHealth; i<maxHealth; i++) heartsHtml += '<span class="heart">🖤</span>';
+        document.getElementById('healthDisplay').innerHTML = heartsHtml;
+        document.getElementById('scoreValue').innerText = score;
+        document.getElementById('coinValue').innerText = coins;
+        document.getElementById('levelDisplay').innerText = currentLevel;
+        let weaponText = weapon === 1 ? '🔫 РУЖЬЁ' : (weapon === 2 ? '🐘 СЛОН' : '✋ КУЛАК');
+        document.getElementById('weaponDisplay').innerHTML = weaponText;
+    }
+    
+    function addScore(amount) { score += amount; updateUI(); }
+    function addCoin() { coins++; addScore(20); playCoin(); updateUI(); if(coins % 10 === 0 && coins !== 0) { playExtra(); } }
+    function heal(amount) { marioHealth = Math.min(maxHealth, marioHealth + amount); playMedkit(); updateUI(); }
+    function damage(amount) {
+        if(mario.invincibleTimer > 0 || gameOver || levelCompleted) return;
+        marioHealth -= amount;
+        playHurt();
+        updateUI();
+        if(marioHealth <= 0) {
+            gameOver = true;
+            playGameOver();
+            marioHealth = 0;
+            updateUI();
+        } else {
+            mario.invincibleTimer = 45;
+            mario.x = 120;
+            mario.y = GROUND_Y - 55;
+            mario.vx = 0;
+            mario.vy = 0;
+        }
+    }
+    
+    function addPlatform(x, y, w, h) { platforms.push({ x, y, w, h }); }
+    
+    // ========== ГЕНЕРАЦИЯ УРОВНЯ ==========
+    function generateLevel(level) {
+        platforms = [];
+        enemies = [];
+        coinsList = [];
+        questionBlocks = [];
+        medkits = [];
+        bullets = [];
+        boss = null;
+        levelCompleted = false;
+        bossDefeated = false;
+        
+        WORLD_WIDTH = 2800 + level * 100;
+        
+        addPlatform(0, GROUND_Y, WORLD_WIDTH, 30);
+        addPlatform(80, GROUND_Y - 60, 100, 40);
+        addPlatform(250, GROUND_Y - 90, 110, 70);
+        for(let i=0; i<5; i++) addPlatform(480 + i*48, GROUND_Y - 75, 38, 38);
+        addPlatform(800, GROUND_Y - 140, 75, 30);
+        addPlatform(950, GROUND_Y - 190, 85, 30);
+        addPlatform(1120, GROUND_Y - 230, 95, 30);
+        addPlatform(1380, GROUND_Y - 110, 210, 30);
+        addPlatform(1680, GROUND_Y - 160, 70, 30);
+        addPlatform(1820, GROUND_Y - 220, 80, 30);
+        
+        for(let i=0; i<4+level/2; i++) {
+            let x = 200 + Math.random() * (WORLD_WIDTH - 400);
+            let y = GROUND_Y - 60 - Math.random() * 160;
+            addPlatform(x, y, 55, 28);
+        }
+        
+        for(let i=0; i<45 + level*2; i++) {
+            let x = 120 + Math.random() * (WORLD_WIDTH - 300);
+            let y = GROUND_Y - 30 - Math.random() * 210;
+            coinsList.push({ x, y, w: 14, h: 14, collected: false });
+        }
+        
+        let enemyCount = 5 + Math.floor(level/2);
+        for(let i=0; i<enemyCount; i++) {
+            let x = 300 + Math.random() * (WORLD_WIDTH - 600);
+            enemies.push({
+                x, y: GROUND_Y - 38, width: 34, height: 34, vx: 0.8 + level*0.05,
+                patrolLeft: x-90, patrolRight: x+90, active: true
+            });
+        }
+        
+        let blockCount = 5 + Math.floor(level/2);
+        for(let i=0; i<blockCount; i++) {
+            let x = 180 + Math.random() * (WORLD_WIDTH - 400);
+            let y = GROUND_Y - 80 - Math.random() * 140;
+            let r = Math.random();
+            let reward = r < 0.35 ? 'coin' : (r < 0.6 ? 'weapon' : (r < 0.8 ? 'medkit' : 'elephant'));
+            questionBlocks.push({ x, y, w: 36, h: 36, reward, used: false });
+        }
+        
+        for(let i=0; i<3+Math.floor(level/3); i++) {
+            let x = 150 + Math.random() * (WORLD_WIDTH - 400);
+            let y = GROUND_Y - 55 - Math.random() * 160;
+            medkits.push({ x, y, w: 22, h: 22, collected: false, healAmount: 2 });
+        }
+        
+        if(level === 8) {
+            boss = {
+                x: WORLD_WIDTH - 420, y: GROUND_Y - 110, width: 85, height: 110,
+                health: 10, maxHealth: 10, active: true, attackTimer: 0,
+                vx: 1.3, direction: 1
+            };
+            addPlatform(WORLD_WIDTH - 520, GROUND_Y - 110, 320, 35);
+        }
+        
+        if(level !== 8) addPlatform(WORLD_WIDTH - 160, GROUND_Y - 85, 65, 85);
+        else addPlatform(WORLD_WIDTH - 190, GROUND_Y - 65, 80, 65);
+        
+        mario.x = 100;
+        mario.y = GROUND_Y - 55;
+        mario.vx = 0;
+        mario.vy = 0;
+        marioHealth = maxHealth;
+        mario.invincibleTimer = 0;
+        updateUI();
+    }
+    
+    function shoot() {
+        if(gameOver || levelCompleted || weapon === 0) return;
+        bullets.push({
+            x: mario.x + (mario.facingRight ? mario.width : -20),
+            y: mario.y + mario.height/2 - 8,
+            vx: mario.facingRight ? 13 : -13,
+            vy: 0, width: 18, height: 8,
+            damage: weapon === 2 ? 3 : 1, active: true
+        });
+        playShoot();
+    }
+    
+    // ========== ФИЗИКА ==========
+    function handleCollisions() {
+        mario.x += mario.vx;
+        for(let plat of platforms) {
+            if(mario.x < plat.x + plat.w && mario.x + mario.width > plat.x &&
+                mario.y + mario.height > plat.y && mario.y < plat.y + plat.h) {
+                if(mario.vx > 0) mario.x = plat.x - mario.width;
+                else if(mario.vx < 0) mario.x = plat.x + plat.w;
+            }
+        }
+        mario.vy += 0.7;
+        mario.y += mario.vy;
+        mario.onGround = false;
+        for(let plat of platforms) {
+            if(mario.x < plat.x + plat.w && mario.x + mario.width > plat.x &&
+                mario.y + mario.height > plat.y && mario.y < plat.y + plat.h) {
+                if(mario.vy >= 0 && (mario.y + mario.height - mario.vy) <= plat.y + 12) {
+                    mario.y = plat.y - mario.height;
+                    mario.vy = 0;
+                    mario.onGround = true;
+                } else if(mario.vy < 0 && mario.y <= plat.y + plat.h) {
+                    mario.y = plat.y + plat.h;
+                    mario.vy = 0;
+                }
+            }
+        }
+        if(mario.x < 20) mario.x = 20;
+        if(mario.x + mario.width > WORLD_WIDTH) mario.x = WORLD_WIDTH - mario.width;
+        if(mario.y + mario.height > GROUND_Y + 100) damage(2);
+        if(mario.y < 0) { mario.y = 0; if(mario.vy<0) mario.vy = 0; }
+    }
+    
+    function updateEnemies() {
+        for(let i=0; i<enemies.length; i++) {
+            const e = enemies[i];
+            if(!e.active) continue;
+            e.x += e.vx;
+            if(e.x <= e.patrolLeft) { e.x = e.patrolLeft; e.vx = Math.abs(e.vx); }
+            if(e.x + e.width >= e.patrolRight) { e.x = e.patrolRight - e.width; e.vx = -Math.abs(e.vx); }
+            if(mario.invincibleTimer <= 0 && !gameOver && !levelCompleted) {
+                if(mario.x < e.x+e.width && mario.x+mario.width > e.x &&
+                    mario.y < e.y+e.height && mario.y+mario.height > e.y) {
+                    if(mario.vy > 0 && (mario.y+mario.height - mario.vy) <= e.y+15) {
+                        e.active = false;
+                        mario.vy = -7;
+                        addScore(100);
+                        playStomp();
+                    } else damage(1);
+                }
+            }
+        }
+        enemies = enemies.filter(e => e.active);
+    }
+    
+    function updateBullets() {
+        for(let i=0; i<bullets.length; i++) {
+            let b = bullets[i];
+            b.x += b.vx;
+            if(b.x < 0 || b.x > WORLD_WIDTH) { bullets.splice(i,1); i--; continue; }
+            let hit = false;
+            for(let j=0; j<enemies.length; j++) {
+                let e = enemies[j];
+                if(b.x < e.x+e.width && b.x+b.width > e.x && b.y < e.y+e.height && b.y+b.height > e.y) {
+                    e.active = false;
+                    hit = true;
+                    addScore(50);
+                    playStomp();
+                    break;
+                }
+            }
+            if(hit) { bullets.splice(i,1); i--; continue; }
+            if(boss && boss.active && currentLevel === 8) {
+                if(b.x < boss.x+boss.width && b.x+b.width > boss.x && b.y < boss.y+boss.height && b.y+b.height > boss.y) {
+                    boss.health -= b.damage;
+                    bullets.splice(i,1);
+                    i--;
+                    playBossHit();
+                    if(boss.health <= 0) {
+                        boss.active = false;
+                        bossDefeated = true;
+                        addScore(1000);
+                        playComplete();
+                        levelCompleted = true;
+                    }
+                    continue;
+                }
+            }
+        }
+    }
+    
+    function updateCoins() {
+        for(let i=0;i<coinsList.length;i++) {
+            let c = coinsList[i];
+            if(c.collected) continue;
+            if(mario.x < c.x+c.w && mario.x+mario.width > c.x &&
+                mario.y < c.y+c.h && mario.y+mario.height > c.y) {
+                c.collected = true;
+                addCoin();
+            }
+        }
+    }
+    
+    function updateQuestionBlocks() {
+        for(let block of questionBlocks) {
+            if(block.used) continue;
+            if(mario.x < block.x+block.w && mario.x+mario.width > block.x &&
+                mario.y+mario.height > block.y && mario.y < block.y+block.h) {
+                block.used = true;
+                playPower();
+                if(block.reward === 'coin') { addCoin(); addScore(50); }
+                else if(block.reward === 'weapon') { weapon = 1; updateUI(); addScore(100); }
+                else if(block.reward === 'elephant') { weapon = 2; updateUI(); addScore(150); }
+                else if(block.reward === 'medkit') { heal(2); addScore(80); }
+            }
+        }
+    }
+    
+    function updateMedkits() {
+        for(let i=0;i<medkits.length;i++) {
+            let m = medkits[i];
+            if(m.collected) continue;
+            if(mario.x < m.x+m.w && mario.x+mario.width > m.x &&
+                mario.y < m.y+m.h && mario.y+mario.height > m.y) {
+                m.collected = true;
+                heal(m.healAmount);
+                addScore(60);
+            }
+        }
+    }
+    
+    function updateBoss() {
+        if(!boss || !boss.active || currentLevel !== 8) return;
+        boss.x += boss.vx * boss.direction;
+        if(boss.x <= WORLD_WIDTH - 580) boss.direction = 1;
+        if(boss.x + boss.width >= WORLD_WIDTH - 160) boss.direction = -1;
+        boss.attackTimer = (boss.attackTimer || 0) + 1;
+        if(boss.attackTimer > 65 && Math.abs(mario.x - boss.x) < 220) {
+            boss.attackTimer = 0;
+            if(Math.random() < 0.5 && mario.invincibleTimer <= 0) damage(2);
+        }
+    }
+    
+    function checkLevelComplete() {
+        if(levelCompleted || gameOver) return;
+        if(currentLevel === 8) { if(bossDefeated) levelCompleted = true; }
+        else { if(mario.x + mario.width > WORLD_WIDTH - 100) levelCompleted = true; }
+        if(levelCompleted && currentLevel < maxLevel) {
+            playComplete();
+            currentLevel++;
+            generateLevel(currentLevel);
+        } else if(levelCompleted && currentLevel === maxLevel) {
+            playComplete();
+            gameOver = true;
+        }
+    }
+    
+    function updateTimers() { if(mario.invincibleTimer > 0) mario.invincibleTimer--; }
+    function updateCamera() {
+        let targetX = mario.x + mario.width/2 - canvas.width/2;
+        targetX = Math.max(0, Math.min(targetX, WORLD_WIDTH - canvas.width));
+        cameraX = targetX;
+    }
+    
+    // ========== УПРАВЛЕНИЕ ==========
+    const keys = { ArrowLeft: false, ArrowRight: false, ArrowUp: false, Space: false };
+    function handleInput() {
+        let acc = 0.68, maxSpd = 7.0;
+        if(keys.ArrowLeft) { mario.vx = Math.max(-maxSpd, mario.vx - acc); mario.facingRight = false; }
+        if(keys.ArrowRight) { mario.vx = Math.min(maxSpd, mario.vx + acc); mario.facingRight = true; }
+        if(!keys.ArrowLeft && !keys.ArrowRight) mario.vx *= 0.92;
+        if((keys.ArrowUp || keys.Space) && mario.onGround && !gameOver && !levelCompleted) {
+            mario.vy = -12.8;
+            mario.onGround = false;
+            playJump();
+        }
+        if(keys.Space && !gameOver && !levelCompleted) { keys.Space = false; shoot(); }
+    }
+    
+    // ========== ОТРИСОВКА ==========
+    function draw() {
+        ctx.clearRect(0,0,canvas.width,canvas.height);
+        let grad = ctx.createLinearGradient(0,0,0,canvas.height);
+        grad.addColorStop(0,"#74b9ff");
+        grad.addColorStop(0.7,"#a4d0fa");
+        ctx.fillStyle = grad;
+        ctx.fillRect(0,0,canvas.width,canvas.height);
+        
+        ctx.fillStyle = "#f0f4fa";
+        for(let i=0;i<6;i++) {
+            ctx.beginPath();
+            ctx.ellipse(100+ (cameraX*0.4 + i*230)%(canvas.width+300) -100, 70, 45, 38,0,0,Math.PI*2);
+            ctx.fill();
+        }
+        
+        for(let plat of platforms) {
+            let screenX = plat.x - cameraX;
+            if(screenX+plat.w < 0 || screenX > canvas.width) continue;
+            if(plat.y === GROUND_Y) {
+                ctx.fillStyle = "#7c5e3a";
+                ctx.fillRect(screenX, plat.y, plat.w, plat.h);
+                ctx.fillStyle = "#9b7a48";
+                for(let i=0;i<plat.w/30;i++) ctx.fillRect(screenX+i*30, plat.y-5, 18,8);
+            } else if(plat.h === 25 && plat.w < 100) {
+                ctx.fillStyle = "#e0b043";
+                ctx.fillRect(screenX, plat.y, plat.w, plat.h);
+                ctx.fillStyle = "#c9922b";
+                ctx.fillRect(screenX+5, plat.y-6, plat.w-10, 8);
+            } else {
+                ctx.fillStyle = "#bc9a6c";
+                ctx.fillRect(screenX, plat.y, plat.w, plat.h);
+                ctx.strokeStyle = "#6b4c2c";
+                ctx.strokeRect(screenX+2, plat.y+2, plat.w-4, plat.h-4);
+            }
+        }
+        
+        for(let coin of coinsList) {
+            if(coin.collected) continue;
+            let scrX = coin.x - cameraX;
+            if(scrX+12<0 || scrX>canvas.width) continue;
+            ctx.fillStyle = "#f7d44a";
+            ctx.beginPath();
+            ctx.ellipse(scrX+7, coin.y+7, 9, 9, 0, 0, Math.PI*2);
+            ctx.fill();
+            ctx.fillStyle = "#e8b116";
+            ctx.beginPath();
+            ctx.ellipse(scrX+7, coin.y+6, 5, 5, 0, 0, Math.PI*2);
+            ctx.fill();
+            ctx.fillStyle = "gold";
+            ctx.font = "bold 14px monospace";
+            ctx.fillText("★", scrX+4, coin.y+10);
+        }
+        
+        for(let block of questionBlocks) {
+            if(block.used) continue;
+            let scrX = block.x - cameraX;
+            if(scrX+36<0 || scrX>canvas.width) continue;
+            ctx.fillStyle = "#FFD966";
+            ctx.fillRect(scrX, block.y, 36, 36);
+            ctx.fillStyle = "#B8860B";
+            ctx.font = "bold 26px monospace";
+            ctx.fillText("?", scrX+10, block.y+30);
+        }
+        
+        for(let med of medkits) {
+            if(med.collected) continue;
+            let scrX = med.x - cameraX;
+            if(scrX+22<0 || scrX>canvas.width) continue;
+            ctx.fillStyle = "#FF6B6B";
+            ctx.fillRect(scrX, med.y, 22, 22);
+            ctx.fillStyle = "white";
+            ctx.font = "bold 16px monospace";
+            ctx.fillText("+", scrX+6, med.y+18);
+        }
+        
+        for(let e of enemies) {
+            let scrX = e.x - cameraX;
+            if(scrX+34<0 || scrX>canvas.width) continue;
+            ctx.fillStyle = "#884b2e";
+            ctx.fillRect(scrX, e.y, 34, 34);
+            ctx.fillStyle = "#5a2e1a";
+            ctx.fillRect(scrX+6, e.y+8, 22, 14);
+            ctx.fillStyle = "white";
+            ctx.fillRect(scrX+8, e.y+5, 7, 7);
+            ctx.fillRect(scrX+20, e.y+5, 7, 7);
+            ctx.fillStyle = "#2c1a0c";
+            ctx.fillRect(scrX+12, e.y+23, 12, 6);
+        }
+        
+        if(boss && boss.active && currentLevel === 8) {
+            let scrX = boss.x - cameraX;
+            ctx.fillStyle = "#8B0000";
+            ctx.fillRect(scrX, boss.y, 85, 110);
+            ctx.fillStyle = "#FF4444";
+            ctx.fillRect(scrX+25, boss.y-18, 40, 18);
+            ctx.fillStyle = "#FFD700";
+            ctx.fillRect(scrX+35, boss.y+25, 20, 25);
+            ctx.fillStyle = "white";
+            ctx.font = "bold 14px monospace";
+            ctx.fillText(`💀 ${boss.health}/${boss.maxHealth}`, scrX+20, boss.y-25);
+        }
+        
+        for(let b of bullets) {
+            let scrX = b.x - cameraX;
+            ctx.fillStyle = "#FFDD44";
+            ctx.fillRect(scrX, b.y, 14, 7);
+            ctx.fillStyle = "#FFAA00";
+            ctx.fillRect(scrX+4, b.y+2, 6, 3);
+        }
+        
+        let marioX = mario.x - cameraX;
+        let inv = (mario.invincibleTimer > 0 && (Math.floor(Date.now()/60)%3 ===0));
+        if(!inv) {
+            ctx.fillStyle = weapon === 2 ? "#FF7F50" : "#e33c2c";
+            ctx.fillRect(marioX, mario.y, 32, 46);
+            ctx.fillStyle = "#f5ac78";
+            ctx.fillRect(marioX+6, mario.y+8, 20, 18);
+            ctx.fillStyle = "#2c1e10";
+            ctx.fillRect(marioX+22, mario.y+30, 8, 12);
+            ctx.fillRect(marioX+2, mario.y+30, 8, 12);
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(marioX+8, mario.y+12, 6, 6);
+            ctx.fillRect(marioX+20, mario.y+12, 6,6);
+            ctx.fillStyle = "#c92a1a";
+            ctx.fillRect(marioX+4, mario.y-4, 26, 12);
+            ctx.fillStyle = "#e03620";
+            ctx.fillRect(marioX+9, mario.y-2, 16, 6);
+        } else {
+            ctx.fillStyle = "#aaaaaa";
+            ctx.fillRect(marioX, mario.y, 32, 46);
+        }
+        
+        if(currentLevel !== 8 || (currentLevel === 8 && bossDefeated)) {
+            let flagX = WORLD_WIDTH - 130 - cameraX;
+            ctx.fillStyle = "#CC0000";
+            ctx.fillRect(flagX, GROUND_Y-90, 12, 90);
+            ctx.fillStyle = "#00AA44";
+            ctx.beginPath();
+            ctx.moveTo(flagX+12, GROUND_Y-90);
+            ctx.lineTo(flagX+70, GROUND_Y-60);
+            ctx.lineTo(flagX+12, GROUND_Y-30);
+            ctx.fill();
+            ctx.fillStyle = "#FFD700";
+            ctx.font = "bold 18px monospace";
+            ctx.fillText("🏁", flagX+25, GROUND_Y-55);
+        }
+        
+        if(gameOver) {
+            ctx.font = "bold 44px monospace";
+            ctx.fillStyle = "#b91c1c";
+            ctx.shadowBlur = 4;
+            ctx.fillText("GAME OVER", canvas.width/2-140, canvas.height/2);
+            ctx.font = "20px monospace";
+            ctx.fillStyle = "white";
+            ctx.fillText("Нажми РЕСТАРТ", canvas.width/2-95, canvas.height/2+60);
+            ctx.shadowBlur = 0;
+        }
+    }
+    
+    function resetGame() {
+        currentLevel = 1;
+        score = 0;
+        coins = 0;
+        marioHealth = maxHealth;
+        weapon = 1;
+        gameOver = false;
+        bossDefeated = false;
+        generateLevel(1);
+        updateUI();
+    }
+    
+    function gameLoop() {
+        if(!gameOver && !levelCompleted) {
+            handleInput();
+            handleCollisions();
+            updateEnemies();
+            updateBullets();
+            updateCoins();
+            updateQuestionBlocks();
+            updateMedkits();
+            updateBoss();
+            checkLevelComplete();
+            updateTimers();
+            updateCamera();
+        }
+        draw();
+        requestAnimationFrame(gameLoop);
+    }
+    
+    // ========== СОБЫТИЯ ==========
+    window.addEventListener('keydown', (e) => {
+        enableAudio();
+        if(e.key === 'ArrowLeft') { keys.ArrowLeft = true; e.preventDefault();}
+        else if(e.key === 'ArrowRight') { keys.ArrowRight = true; e.preventDefault();}
+        else if(e.key === 'ArrowUp') { keys.ArrowUp = true; e.preventDefault();}
+        else if(e.key === ' ') { keys.Space = true; e.preventDefault();}
+    });
+    window.addEventListener('keyup', (e) => {
+        if(e.key === 'ArrowLeft') keys.ArrowLeft = false;
+        if(e.key === 'ArrowRight') keys.ArrowRight = false;
+        if(e.key === 'ArrowUp') keys.ArrowUp = false;
+        if(e.key === ' ') keys.Space = false;
+    });
+    
+    document.getElementById('leftBtn').addEventListener('mousedown', (e) => { e.preventDefault(); enableAudio(); keys.ArrowLeft=true; });
+    document.getElementById('leftBtn').addEventListener('mouseup', () => keys.ArrowLeft=false);
+    document.getElementById('rightBtn').addEventListener('mousedown', (e) => { e.preventDefault(); enableAudio(); keys.ArrowRight=true; });
+    document.getElementById('rightBtn').addEventListener('mouseup', () => keys.ArrowRight=false);
+    document.getElementById('jumpBtn').addEventListener('mousedown', (e) => { 
+        e.preventDefault();
+        enableAudio();
+        if(mario.onGround && !gameOver && !levelCompleted) {
+            mario.vy = -12.8;
+            mario.onGround = false;
+            playJump();
+        }
+    });
+    document.getElementById('shootBtn').addEventListener('click', () => { enableAudio(); shoot(); });
+    document.getElementById('resetBtn').addEventListener('click', () => resetGame());
+    document.getElementById('soundToggle').addEventListener('click', () => toggleSound());
+    
+    canvas.addEventListener('click', enableAudio);
+    
+    initAudio();
+    generateLevel(1);
+    gameLoop();
+})();
+</script>
+</body>
+</html>
